@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olix Studios · where night-time projects come alive</title>
+<meta name="description" content="Olix Studios is Ashwini's corner of the internet: a liquid tour through things built after dark, from an API key vault to a gold-duty research paper, sumo robots and on-device AI.">
+<meta property="og:title" content="Olix Studios">
+<meta property="og:description" content="Where night-time projects come alive.">
+<meta name="theme-color" content="#060A1C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#060A1C;color:#E8ECFF;font-family:Geist,system-ui,sans-serif}
+a{color:#9CC8FF}
+#scroller{height:100vh;overflow-y:auto;overflow-x:hidden}
+#track{position:relative;height:920vh}
+#stage{position:sticky;top:0;height:100vh;min-height:600px;overflow:hidden}
+#stage-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;cursor:crosshair;touch-action:pan-y}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0}
+header{position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:20px 28px;pointer-events:none;z-index:3}
+.brand{font-family:'Instrument Serif',serif;font-style:italic;font-size:26px;letter-spacing:-0.01em}
+.brand span{color:#C4B5FD}
+.meta{font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.04em;color:#9AA3D0;text-transform:uppercase}
+.btns{display:flex;gap:10px;pointer-events:auto}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid rgba(167,139,250,.45);background:rgba(255,255,255,.04);color:#E8ECFF;font:500 13px Geist,sans-serif;cursor:pointer;transition:background .25s}
+.btn:hover{background:rgba(167,139,250,.16)}
+.btn:focus-visible,.rail-btn:focus-visible,.cta:focus-visible{outline:2px solid #A78BFA;outline-offset:3px}
+#rail{position:absolute;right:22px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px;z-index:3;opacity:0;transition:opacity .4s}
+.rail-btn{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:44px;min-height:36px;padding:0 6px;border:none;border-radius:10px;background:transparent;color:#7C86B8;font:11px 'Geist Mono',monospace;letter-spacing:.08em;cursor:pointer}
+.rail-btn .rl{opacity:.55;transition:opacity .3s}
+.rail-btn .rb{width:12px;height:2px;border-radius:2px;background:rgba(165,180,252,.45);transition:width .3s,background .3s}
+.rail-btn.on{color:#F2F0FF}.rail-btn.on .rl{opacity:1}.rail-btn.on .rb{width:28px;background:linear-gradient(90deg,#7DD3FC,#A78BFA)}
+.panel{position:absolute;top:50%;width:min(36%,460px);opacity:0;z-index:2;pointer-events:none}
+.kicker{font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.12em;color:#A5B4FC}
+.panel h2{margin:14px 0 0;font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;font-size:64px;line-height:.98;letter-spacing:-0.01em;color:#F2F0FF}
+.panel p{margin:18px 0 0;font-size:17px;line-height:1.6;color:#B8C0E8}
+.cta{display:inline-flex;align-items:center;gap:10px;margin-top:24px;min-height:46px;padding:0 20px;border-radius:999px;background:linear-gradient(90deg,#60A5FA,#8B5CF6);color:#fff;font-size:14px;font-weight:500;text-decoration:none}
+#end{position:absolute;left:0;right:0;top:16%;text-align:center;opacity:0;pointer-events:none;z-index:2}
+#end h2{margin:12px 0 0;font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;font-size:84px;line-height:1;color:#F2F0FF}
+.links{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:26px}
+.pill{display:inline-flex;align-items:center;min-height:46px;padding:0 20px;border-radius:999px;border:1px solid rgba(167,139,250,.45);background:rgba(255,255,255,.04);color:#E8ECFF;text-decoration:none;font-size:14px}
+#hint{position:absolute;left:0;right:0;bottom:26px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding:0 28px;pointer-events:none;z-index:2;font:12px 'Geist Mono',monospace;letter-spacing:.06em;color:#9AA3D0;animation:fade .8s ease-out both}
+#hint b{font-weight:400;letter-spacing:.12em;color:#C4B5FD}
+#failed{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;color:#C4B5FD}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:760px){.panel{left:6%!important;width:88%;top:auto;bottom:6%;transform:none!important}.panel h2{font-size:44px}#end h2{font-size:56px}.meta{display:none}#rail{right:8px}}
+</style>
+</head>
+<body>
+<div id="scroller">
+ <div id="track">
+  <div id="stage">
+   <canvas id="stage-canvas" role="img" aria-label="A dark liquid surface with a liquid stick figure. As you scroll, the figure walks to each project and melts into its shape: a key, a coin with a rising chart, a video, two sumo robots, a race car, a phone and a swirl of droplets."></canvas>
+   <h1 class="sr">Welcome to Olix Studios, where night-time projects come alive.</h1>
+   <header>
+    <div style="display:flex;align-items:baseline;gap:18px;flex-wrap:wrap">
+     <span class="brand">olix <span>studios</span></span>
+     <span class="meta">Bengaluru · <span id="clock"></span> · <span id="status"></span></span>
+    </div>
+    <div class="btns">
+     <button class="btn" id="sound-btn" aria-pressed="false">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path id="ico-on" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" style="display:none"/><path id="ico-off" d="m22 9-6 6M16 9l6 6"/></svg>
+      <span id="sound-label">Sound off</span>
+     </button>
+     <button class="btn" id="replay-btn">Replay</button>
+    </div>
+   </header>
+   <nav id="rail" aria-label="Projects"></nav>
+   <div id="panels"></div>
+   <div id="end">
+    <div class="kicker">THAT’S THE TOUR</div>
+    <h2>Say hi?</h2>
+    <div class="links">
+     <a class="pill" href="https://github.com/OlixIgnacious">GitHub</a>
+     <a class="pill" href="https://youtube.com/@writteninchalk">YouTube</a>
+    </div>
+   </div>
+   <div id="hint" style="display:none"><span>MOVE THROUGH THE WATER · CLICK TO DROP</span><b>SCROLL ↓</b></div>
+   <div id="failed" style="display:none">This view needs WebGL.</div>
+  </div>
+ </div>
+</div>
+<noscript><p style="padding:24px">Olix Studios needs JavaScript for its liquid tour. Projects: keyholder.dev · github.com/OlixIgnacious</p></noscript>
+<script src="assets/three.min.js"></script>
+<script src="assets/main.js"></script>
+</body>
+</html>
