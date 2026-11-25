@@ -15,7 +15,9 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#060A1C;color:#E8ECFF;font-family:Geist,system-ui,sans-serif}
 a{color:#9CC8FF}
-#scroller{height:100vh;overflow-y:auto;overflow-x:hidden}
+#scroller{height:100vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-stopped{overflow:hidden}
 #track{position:relative;height:920vh}
 #stage{position:sticky;top:0;height:100vh;min-height:600px;overflow:hidden}
 #stage-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;cursor:crosshair;touch-action:pan-y}
@@ -85,6 +87,7 @@ header{position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;justif
 </div>
 <noscript><p style="padding:24px">Olix Studios needs JavaScript for its liquid tour. Projects: keyholder.dev · github.com/OlixIgnacious</p></noscript>
 <script src="assets/three.min.js"></script>
+<script src="assets/lenis.min.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>

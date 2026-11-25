@@ -20,12 +20,19 @@
         if (this.ac && this.ac.state === 'suspended') this.ac.resume();
         this.setState({ sound: !this.state.sound });
       });
-      document.getElementById('replay-btn').addEventListener('click', () => { this.scroller.scrollTo({ top: 0 }); this.sc = 0; if (this.gl) this.gl.reset(); });
-      this.scroller.addEventListener('scroll', () => { const v = this.scroller.scrollTop / Math.max(1, this.scroller.clientHeight); this.sc = v; this.setState({ s: v }); }, { passive: true });
+      this.target = 0;
+      if (window.Lenis && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        this.lenis = new window.Lenis({ wrapper: this.scroller, content: document.getElementById('track'), lerp: 0.085, wheelMultiplier: 0.9, smoothWheel: true, syncTouch: false });
+        this.lenis.on('scroll', (e) => { this.target = e.scroll / Math.max(1, this.scroller.clientHeight); });
+      } else {
+        this.scroller.addEventListener('scroll', () => { this.target = this.scroller.scrollTop / Math.max(1, this.scroller.clientHeight); }, { passive: true });
+      }
+      this.scrollTo = (top, smooth) => { if (this.lenis) this.lenis.scrollTo(top, { immediate: !smooth, duration: smooth ? 1.6 : 0 }); else this.scroller.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' }); };
+      document.getElementById('replay-btn').addEventListener('click', () => { this.scrollTo(0, false); this.target = 0; this.sc = 0; if (this.gl) this.gl.reset(); });
       const tick = () => { try { this.setState({ clock: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) }); } catch (e) {} };
       tick(); setInterval(tick, 15000);
       this.render();
-      try { this.build(); } catch (e) { console.log('[olixstudios]', e); this.setState({ failed: true }); }
+      try { this.build(); } catch (e) { console.log('[olixstudios]', e); this.setState({ failed: true }); let last = performance.now(); const fb = (n) => { this.frame(n, Math.min(0.05, (n - last) / 1000)); last = n; requestAnimationFrame(fb); }; requestAnimationFrame(fb); }
     }
     setState(o) { Object.assign(this.state, o); if (!this._raf) this._raf = requestAnimationFrame(() => { this._raf = 0; this.render(); }); }
     buildDom() {
@@ -41,9 +48,16 @@
         const b = document.createElement('button');
         b.className = 'rail-btn'; b.setAttribute('aria-label', 'Go to ' + d.name);
         b.innerHTML = '<span class="rl">0' + (i + 1) + '</span><span class="rb"></span>';
-        b.addEventListener('click', () => this.scroller.scrollTo({ top: (1 + i + 0.6) * this.scroller.clientHeight, behavior: 'smooth' }));
+        b.addEventListener('click', () => this.scrollTo((1 + i + 0.6) * this.scroller.clientHeight, true));
         this.el.rail.appendChild(b); return b;
       });
+    }
+    frame(now, dt) {
+      if (this.lenis) this.lenis.raf(now);
+      const t = this.target || 0;
+      this.sc += (t - this.sc) * (1 - Math.exp(-dt * 14));
+      if (Math.abs(t - this.sc) < 0.0005) this.sc = t;
+      if (Math.abs(this.sc - this.state.s) > 0.0003) { this.state.s = this.sc; this.render(); }
     }
     render() {
       const st = this.state, S = st.s, N = 7;
@@ -80,7 +94,7 @@
     build() {
       const T = window.THREE, cv = this.canvas;
       const renderer = new T.WebGLRenderer({ canvas: cv, antialias: false, alpha: false, powerPreference: 'high-performance' });
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      let dpr = Math.min(window.devicePixelRatio || 1, 1.25);
       renderer.setPixelRatio(dpr);
       const cam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       const quad = new T.PlaneGeometry(2, 2);
@@ -103,7 +117,7 @@
         'varying vec2 vUv;',
         'uniform sampler2D tSim; uniform sampler2D tText; uniform vec2 simPx;',
         'uniform float time, aspect, floorY, manOn, reveal, refr, textA, shapeM, sT;',
-        'uniform int shapeId; uniform vec2 shapeC;',
+        'uniform int shapeId; uniform vec2 shapeC; uniform vec3 bound;',
         'uniform vec2 J[8]; uniform vec3 D[14]; uniform int nD;',
         'float smin(float a, float b, float k){ float h = max(k - abs(a - b), 0.0) / k; return min(a, b) - h * h * k * 0.25; }',
         'float cap(vec2 p, vec2 a, vec2 b, float r){ vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / (dot(ba, ba) + 1e-7), 0.0, 1.0); return length(pa - ba * h) - r; }',
@@ -151,6 +165,9 @@
         '}',
         'float sdf(vec2 p){',
         ' float d = 1e3;',
+        ' float db = length(p - bound.xy) - bound.z;',
+        ' if (db > 0.05) { d = db; }',
+        ' else {',
         ' if (manOn > 0.5) {',
         '  float w = 0.0006 * sin(time * 7.0 + p.y * 90.0);',
         '  d = length(p - J[0]) - 0.021 - w;',
@@ -161,6 +178,7 @@
         '  d = smin(d, cap(p, J[3], J[7], 0.0058 + w), 0.009);',
         ' }',
         ' if (shapeM > 0.001) { float ds = shapeSdf(p); d = mix(d, ds, shapeM); }',
+        ' }',
         ' for (int i = 0; i < 14; i++) { if (i >= nD) break; d = smin(d, length(p - D[i].xy) - D[i].z, 0.018); }',
         ' return d;',
         '}',
@@ -231,7 +249,7 @@
       textTex.minFilter = T.LinearFilter;
       const compMat = new T.ShaderMaterial({ vertexShader: VS, fragmentShader: COMP, uniforms: {
         tSim: { value: null }, tText: { value: textTex }, simPx: { value: new T.Vector2() }, time: { value: 0 }, aspect: { value: 1 }, floorY: { value: 0.27 },
-        manOn: { value: 0 }, reveal: { value: -0.1 }, refr: { value: 0.11 }, textA: { value: 1 }, shapeM: { value: 0 }, sT: { value: 0 }, shapeId: { value: 0 }, shapeC: { value: new T.Vector2() }, J: { value: Jv }, D: { value: Dv }, nD: { value: 0 } } });
+        manOn: { value: 0 }, reveal: { value: -0.1 }, refr: { value: 0.11 }, textA: { value: 1 }, shapeM: { value: 0 }, sT: { value: 0 }, shapeId: { value: 0 }, shapeC: { value: new T.Vector2() }, bound: { value: new T.Vector3(0, 0, 10) }, J: { value: Jv }, D: { value: Dv }, nD: { value: 0 } } });
       const compScene = new T.Scene(); compScene.add(new T.Mesh(quad, compMat));
 
       const W = { w: 1, h: 1, aspect: 1, rtA: null, rtB: null };
@@ -308,7 +326,7 @@
       };
       reset();
 
-      let last = null, lastMove = null;
+      let last = null, lastMove = null; const perf = { n: 0, sum: 0 };
       cv.addEventListener('pointermove', (e) => {
         const r = cv.getBoundingClientRect(); const u = (e.clientX - r.left) / r.width, v = 1 - (e.clientY - r.top) / r.height;
         if (lastMove) { const sp = Math.hypot(u - lastMove[0], v - lastMove[1]); if (sp > 0.002) impulse(u * W.aspect, v, 0.028, Math.min(0.5, sp * 14)); }
@@ -324,6 +342,9 @@
       const loop = (now) => {
         if (!this.gl) return;
         const dt = last === null ? 0.016 : Math.min(0.05, (now - last) / 1000); last = now;
+        if (this.frame) this.frame(now, dt);
+        if (dt < 0.045) { perf.n++; perf.sum += dt; }
+        if (perf.n === 90) { if (perf.sum / perf.n > 0.021 && dpr > 0.75) { dpr = dpr > 1 ? 1 : 0.75; renderer.setPixelRatio(dpr); resize(); } perf.n = 0; perf.sum = 0; }
         const time = now / 1000;
         tl.t += dt;
         let pose = null; let manOn = 0; const Ds = [];
@@ -406,6 +427,9 @@
             if (shapeId === 4 && shapeM > 0.5 && Math.random() < 0.08) impulse(cur, FY, 0.03, -0.25);
           }
         }
+        if (shapeM > 0.001) compMat.uniforms.bound.value.set(compMat.uniforms.shapeC.value.x, compMat.uniforms.shapeC.value.y, 0.21);
+        else if (pose) compMat.uniforms.bound.value.set(pose[3][0], FY + 0.12, 0.17);
+        else compMat.uniforms.bound.value.set(0, 0, 10);
         compMat.uniforms.shapeM.value = shapeM; compMat.uniforms.shapeId.value = shapeId; compMat.uniforms.sT.value = sTloc; compMat.uniforms.textA.value = textA;
         for (let i = falling.length - 1; i >= 0; i--) {
           const f = falling[i]; f.vy -= 3.3 * dt; f.y += f.vy * dt;
